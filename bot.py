@@ -4,17 +4,9 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, Con
 
 TOKEN = "8786374300:AAGlF27oE0rwCwRPhwrDkt-mEt5C6f4H9eY"
 
-
-def load_movies():
-    try:
-        with open("movies.json", "r") as f:
-            return json.load(f)
-    except Exception as e:
-        print("Error loading movies.json:", e)
-        return []
-
-
-movies = load_movies()
+# load movies
+with open("movies.json", "r") as f:
+    movies = json.load(f)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -37,21 +29,21 @@ async def search_movie(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.lower()
 
     if text == "bollywood":
-        result = [m for m in movies if m.get("category") == "bollywood"]
+        result = [m for m in movies if m["category"] == "bollywood"]
 
     elif text == "hollywood":
-        result = [m for m in movies if m.get("category") == "hollywood"]
+        result = [m for m in movies if m["category"] == "hollywood"]
 
     elif text == "south movies":
-        result = [m for m in movies if m.get("category") == "south"]
+        result = [m for m in movies if m["category"] == "south"]
 
     else:
-        result = [m for m in movies if text in m.get("name", "").lower()]
+        result = [m for m in movies if text in m["name"].lower()]
 
     if result:
         for movie in result[:10]:
             await update.message.reply_text(
-                f"🎬 {movie.get('name')}\n\nDownload Link:\n{movie.get('link')}"
+                f"🎬 {movie['name']}\n\nDownload Link:\n{movie['link']}"
             )
     else:
         await update.message.reply_text("❌ Movie not found")
