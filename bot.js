@@ -6,17 +6,16 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Express server for Render health check
-app.get('/', (req, res) => res.send('Movie Bot is Live!'));
+app.get('/', (req, res) => res.send('🎬 Movie Bot is Live!'));
 app.get('/ping', (req, res) => res.status(200).send('OK'));
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
 
-// Bot token (aapka wala)
+// Bot token
 const bot = new Telegraf('8786374300:AAGlF27oE0rwCwRPhwrDkt-mEt5C6f4H9eY');
 
-// Movies data (JSON file se load karenge)
+// Movies data
 let movies = [];
 
-// Load movies on startup
 async function loadMovies() {
     try {
         const data = await fs.readFile('movies.json', 'utf8');
@@ -29,17 +28,18 @@ async function loadMovies() {
 }
 loadMovies();
 
-// /start command
+// /start command – Professional welcome
 bot.start(async (ctx) => {
-    const firstName = ctx.from.first_name || "User";
+    const firstName = ctx.from.first_name || 'User';
     
-    const welcomeMessage = `🎬 **Hi ${firstName}, Welcome to Movie Search Bot!**\n\n` +
-        `Search movies by:\n` +
-        `• Category: Bollywood, Hollywood, South\n` +
-        `• Movie name (e.g., Pathaan, KGF)\n\n` +
-        `👇 **Choose a category below or type any movie name!**`;
+    const welcomeMessage = `🎬 **Welcome ${firstName}!**\n\n` +
+        `🔍 **Movie Search Bot** – Find any movie instantly!\n\n` +
+        `📌 **How to use:**\n` +
+        `• Tap on category buttons below\n` +
+        `• Type movie name (e.g., Pathaan, KGF)\n` +
+        `• Get download link instantly\n\n` +
+        `👇 **Choose a category:**`;
 
-    // Keyboard with categories
     const keyboard = Markup.keyboard([
         ['🎬 Bollywood', '🎬 Hollywood'],
         ['🎬 South Movies']
@@ -48,46 +48,73 @@ bot.start(async (ctx) => {
     await ctx.replyWithMarkdown(welcomeMessage, keyboard);
 });
 
-// Handle text messages
+// Handle text messages – Attractive output
 bot.on('text', async (ctx) => {
+    if (!movies.length) {
+        return ctx.reply('❌ *Database not available. Try later!*', { parse_mode: 'Markdown' });
+    }
+
     const text = ctx.message.text.toLowerCase().replace('🎬', '').trim();
     let results = [];
+    let category = '';
 
     // Category search
     if (text.includes('bollywood')) {
         results = movies.filter(m => m.category === 'bollywood');
-        await ctx.reply(`🎬 *Bollywood Movies* (${results.length} found)`, { parse_mode: 'Markdown' });
-    }
-    else if (text.includes('hollywood')) {
+        category = 'Bollywood';
+    } else if (text.includes('hollywood')) {
         results = movies.filter(m => m.category === 'hollywood');
-        await ctx.reply(`🎬 *Hollywood Movies* (${results.length} found)`, { parse_mode: 'Markdown' });
-    }
-    else if (text.includes('south')) {
+        category = 'Hollywood';
+    } else if (text.includes('south')) {
         results = movies.filter(m => m.category === 'south');
-        await ctx.reply(`🎬 *South Movies* (${results.length} found)`, { parse_mode: 'Markdown' });
-    }
-    else {
-        // Normal search by name
+        category = 'South';
+    } else {
         results = movies.filter(m => m.name.toLowerCase().includes(text));
-        await ctx.reply(`🔍 *${results.length} movies found* for "${ctx.message.text}"`, { parse_mode: 'Markdown' });
     }
 
-    // Send results (max 5)
-    if (results.length > 0) {
-        for (const movie of results.slice(0, 5)) {
-            const msg = `🎬 *${movie.name}*\n📥 [Download Link](${movie.link})`;
-            await ctx.replyWithMarkdown(msg, { disable_web_page_preview: false });
-        }
-        if (results.length > 5) {
-            await ctx.reply(`📌 Showing 5 of ${results.length} movies. Try more specific search.`);
-        }
+    // If no results
+    if (results.length === 0) {
+        return ctx.replyWithMarkdown(
+            `❌ *No movies found for* "${ctx.message.text}"\n\n` +
+            `💡 Try different spelling or use category buttons.`
+        );
+    }
+
+    // Category header
+    if (category) {
+        await ctx.replyWithMarkdown(
+            `🎬 *${category} Movies* (${results.length} found)\n═══════════════════`
+        );
     } else {
-        await ctx.reply('❌ No movies found. Try another name or category.');
+        await ctx.replyWithMarkdown(
+            `🔍 *${results.length} movies found* for "${ctx.message.text}"\n═══════════════════`
+        );
+    }
+
+    // Send each movie as a card
+    for (const movie of results.slice(0, 5)) {
+        const message = `🎥 *${movie.name}*\n` +
+                       `📂 *Category:* ${movie.category.charAt(0).toUpperCase() + movie.category.slice(1)}\n\n` +
+                       `📥 **Download:**`;
+
+        await ctx.replyWithMarkdown(message, {
+            ...Markup.inlineKeyboard([
+                [Markup.button.url('⬇️ Get Link', movie.link)]
+            ])
+        });
+    }
+
+    // If more than 5 movies
+    if (results.length > 5) {
+        await ctx.replyWithMarkdown(
+            `📌 *Showing 5 of ${results.length} movies.*\n` +
+            `✨ Type exact name for more specific results.`
+        );
     }
 });
 
 // Bot launch
-bot.launch().then(() => console.log('🤖 Movie Bot started!'));
+bot.launch().then(() => console.log('🤖 Movie Bot started successfully!'));
 
 // Graceful stop
 process.once('SIGINT', () => bot.stop('SIGINT'));
