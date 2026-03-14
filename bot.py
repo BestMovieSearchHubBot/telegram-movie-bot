@@ -8,31 +8,39 @@ import asyncio
 
 # लॉगिंग सेटअप
 logging.basicConfig(
-    format='%(asame)s - %(name)s - %(levelname)s - %(message)s',
+    format='%(asime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
 
-# टोकन और पोर्ट सेटिंग
-TOKEN = os.environ.get("BOT_TOKEN", "8786374300:AAGlF27oE0rwCwRPhwrDkt-mEt5C6f4H9eY")
+# Environment variables
+TOKEN = os.environ.get("BOT_TOKEN")
 PORT = int(os.environ.get("PORT", 10000))
+
+if not TOKEN:
+    logger.error("❌ BOT_TOKEN not set in environment variables!")
+    exit(1)
 
 # Flask ऐप
 flask_app = Flask(__name__)
 
 # movies.json लोड करें
-try:
-    with open("movies.json", "r", encoding="utf-8") as f:
-        movies = json.load(f)
-    logger.info(f"✅ {len(movies)} movies loaded successfully")
-except FileNotFoundError:
-    logger.error("❌ movies.json file not found!")
-    movies = []
-except json.JSONDecodeError:
-    logger.error("❌ movies.json is corrupted!")
-    movies = []
+def load_movies():
+    try:
+        with open("movies.json", "r", encoding="utf-8") as f:
+            movies_data = json.load(f)
+        logger.info(f"✅ {len(movies_data)} movies loaded successfully")
+        return movies_data
+    except FileNotFoundError:
+        logger.error("❌ movies.json file not found!")
+        return []
+    except json.JSONDecodeError:
+        logger.error("❌ movies.json is corrupted!")
+        return []
 
-# ग्लोबल वेरिएबल for application
+movies = load_movies()
+
+# Initialize bot application
 application = None
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -46,96 +54,97 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     
-    welcome_message = f"""🎬 Welcome {user.first_name} to Movie Search Bot!
+    welcome_message = f"""🎬 **Welcome {user.first_name} to Movie Search Bot!**
 
-🔍 How to use:
-• Click on category buttons
-• Or type any movie name
+🔍 **How to use:**
+• Click on category buttons below
+• Or type any movie name directly
 
-📽️ Categories:
-• Bollywood
-• Hollywood
-• South Movies
+📽️ **Available Categories:**
+• Bollywood - {len([m for m in movies if m.get('category')=='bollywood'])} movies
+• Hollywood - {len([m for m in movies if m.get('category')=='hollywood'])} movies
+• South Movies - {len([m for m in movies if m.get('category')=='south'])} movies
+
+**Commands:**
+/help - Show help
+/categories - Browse categories
 
 Enjoy your movies! 🍿"""
     
     await update.message.reply_text(
         welcome_message,
-        reply_markup=reply_markup
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
     )
+    logger.info(f"User {user.first_name} started the bot")
 
 async def search_movie(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Search movies based on user input"""
     
-    # Check if movies database is loaded
     if not movies:
         await update.message.reply_text("❌ Database not available. Please try again later.")
         return
     
-    # Get user message
     text = update.message.text.strip()
     original_text = text
     text_lower = text.lower()
     
-    logger.info(f"Search query: {text}")
+    logger.info(f"Search query from {update.effective_user.first_name}: {text}")
     
     # Remove emoji if present
-    if "🎬" in text:
-        text_lower = text_lower.replace("🎬", "").strip()
+    text_lower = text_lower.replace("🎬", "").strip()
     
-    # Category search
-    if "bollywood" in text_lower:
-        result = [m for m in movies if m.get("category", "").lower() == "bollywood"]
-        category_name = "Bollywood"
-    elif "hollywood" in text_lower:
-        result = [m for m in movies if m.get("category", "").lower() == "hollywood"]
-        category_name = "Hollywood"
-    elif "south" in text_lower:
-        result = [m for m in movies if m.get("category", "").lower() == "south"]
-        category_name = "South Movies"
-    else:
-        # Normal search
-        result = [m for m in movies if text_lower in m.get("name", "").lower()]
-        category_name = None
-    
-    # Send results
-    if result:
-        if category_name:
-            await update.message.reply_text(f"📽️ **{category_name} Movies Found:** {len(result)}")
-        else:
-            await update.message.reply_text(f"🔍 Found {len(result)} movies matching '{original_text}'")
+    # Search by category or name
+    if text_lower in ["bollywood", "hollywood", "south movies", "south"]:
+        if "bollywood" in text_lower:
+            category = "bollywood"
+            display_name = "Bollywood"
+        elif "hollywood" in text_lower:
+            category = "hollywood"
+            display_name = "Hollywood"
+        else:  # south
+            category = "south"
+            display_name = "South Movies"
         
-        # Send movies (limit to 5 to avoid spam)
-        sent_count = 0
-        for movie in result[:5]:
+        results = [m for m in movies if m.get("category", "").lower() == category]
+        await update.message.reply_text(f"🎯 Found {len(results)} {display_name} movies:")
+    else:
+        # Search by movie name
+        results = [m for m in movies if text_lower in m.get("name", "").lower()]
+        await update.message.reply_text(f"🔍 Found {len(results)} movies matching '{original_text}':")
+    
+    # Send results (max 5)
+    if results:
+        for movie in results[:5]:
             try:
-                movie_name = movie.get("name", "Unknown")
-                movie_link = movie.get("link", "#")
+                name = movie.get("name", "Unknown")
+                quality = movie.get("quality", "HD")
+                year = movie.get("year", "N/A")
+                link = movie.get("link", "#")
                 
-                message = f"""🎬 **{movie_name}**
+                message = f"""🎬 **{name}**
+📅 Year: {year}
+✨ Quality: {quality}
 
-📥 **Download Link:**
-{movie_link}
-
-⭐ Enjoy the movie!"""
+📥 **Download:** [Click Here]({link})"""
                 
                 await update.message.reply_text(
                     message,
+                    parse_mode='Markdown',
                     disable_web_page_preview=False
                 )
-                sent_count += 1
             except Exception as e:
                 logger.error(f"Error sending movie: {e}")
         
-        if len(result) > 5:
-            await update.message.reply_text(f"📌 Showing 5 of {len(result)} movies. Please refine your search for more specific results.")
+        if len(results) > 5:
+            await update.message.reply_text(f"📌 Showing 5 of {len(results)} movies. Try more specific search.")
     else:
         await update.message.reply_text(
             f"❌ No movies found matching '{original_text}'\n\n"
-            "Try:\n"
-            "• Using category buttons\n"
-            "• Checking spelling\n"
-            "• Searching with different keywords"
+            "💡 **Tips:**\n"
+            "• Try different spelling\n"
+            "• Use category buttons\n"
+            "• Search for partial names"
         )
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -145,137 +154,155 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 **Commands:**
 /start - Start the bot
 /help - Show this help
-/categories - Show all categories
+/categories - List all categories
 
-**How to Search:**
-1. Click on category buttons
-2. Type any movie name
-3. Use keywords
+**Search Tips:**
+1. Click category buttons for lists
+2. Type movie name for specific search
+3. Partial names work too!
 
 **Categories:**
-• Bollywood - Hindi movies
-• Hollywood - English movies
-• South Movies - South Indian movies
+• Bollywood (Hindi Movies)
+• Hollywood (English Movies)
+• South Movies (Tamil, Telugu, Kannada)
 
 **Support:**
-If you find any issues, please try again later.
+If bot doesn't respond, try /start again
 
 Happy Watching! 🍿"""
     
     await update.message.reply_text(help_text, parse_mode='Markdown')
 
 async def categories_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Show all categories"""
-    # Get unique categories
-    categories = set(m.get("category", "").lower() for m in movies if m.get("category"))
+    """Show all categories with counts"""
+    categories = {
+        "bollywood": "Bollywood",
+        "hollywood": "Hollywood", 
+        "south": "South Movies"
+    }
     
-    message = "**📽️ Available Categories:**\n\n"
+    message = "**📽️ Movie Categories**\n\n"
     
-    for category in categories:
-        count = len([m for m in movies if m.get("category", "").lower() == category])
-        message += f"• **{category.title()}** - {count} movies\n"
+    for cat_key, cat_name in categories.items():
+        count = len([m for m in movies if m.get("category", "").lower() == cat_key])
+        message += f"• **{cat_name}**: {count} movies\n"
     
-    message += "\nClick on category buttons to browse!"
+    message += "\nClick on category buttons below to browse!"
     
     await update.message.reply_text(message, parse_mode='Markdown')
 
-# Flask webhook endpoint
+# Flask routes
 @flask_app.route(f"/{TOKEN}", methods=["POST"])
 def webhook():
-    """Handle Telegram webhook updates"""
-    if request.method == "POST":
-        try:
-            update = Update.de_json(request.get_json(force=True), application.bot)
-            asyncio.run_coroutine_threadsafe(application.process_update(update), application.loop)
-            return "OK", 200
-        except Exception as e:
-            logger.error(f"Webhook error: {e}")
-            return "Error", 500
+    """Handle Telegram updates"""
+    if application is None:
+        return "Application not initialized", 500
+    
+    try:
+        update = Update.de_json(request.get_json(force=True), application.bot)
+        asyncio.run_coroutine_threadsafe(application.process_update(update), application.loop)
+        return "OK", 200
+    except Exception as e:
+        logger.error(f"Webhook error: {e}")
+        return "Error", 500
 
 @flask_app.route("/")
 def index():
-    """Health check endpoint"""
-    return "🤖 Movie Search Bot is running!", 200
+    """Home page"""
+    return """
+    <html>
+        <head><title>Movie Search Bot</title></head>
+        <body style="font-family: Arial; text-align: center; padding: 50px;">
+            <h1>🤖 Movie Search Bot</h1>
+            <p>Bot is running successfully!</p>
+            <p>📊 Movies in database: {}</p>
+            <p><a href="https://t.me/{}">Open Bot in Telegram</a></p>
+        </body>
+    </html>
+    """.format(len(movies), "YOUR_BOT_USERNAME")
 
 @flask_app.route("/health")
 def health():
-    """Health check for Render"""
-    return {"status": "healthy", "movies_count": len(movies)}, 200
+    """Health check"""
+    return {
+        "status": "healthy",
+        "movies_count": len(movies),
+        "bot_initialized": application is not None
+    }
 
-def setup_webhook(application):
-    """Setup webhook for the bot"""
-    try:
-        # Get Render URL
-        render_url = os.environ.get("RENDER_EXTERNAL_URL")
+@flask_app.route("/debug")
+def debug():
+    """Debug info"""
+    return {
+        "bot_token_set": bool(TOKEN),
+        "movies_count": len(movies),
+        "port": PORT,
+        "webhook_url": f"https://{request.host}/{TOKEN}"
+    }
+
+def setup_webhook():
+    """Setup webhook for production"""
+    global application
+    
+    # Create application
+    application = Application.builder().token(TOKEN).build()
+    
+    # Add handlers
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("help", help_command))
+    application.add_handler(CommandHandler("categories", categories_command))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, search_movie))
+    
+    logger.info("✅ Bot handlers added")
+    
+    # Setup webhook
+    render_url = os.environ.get("RENDER_EXTERNAL_URL")
+    
+    if render_url:
+        webhook_url = f"{render_url}/{TOKEN}"
+        logger.info(f"Setting webhook to: {webhook_url}")
         
-        if render_url:
-            webhook_url = f"{render_url}/{TOKEN}"
-            
+        try:
             # Delete old webhook
             application.bot.delete_webhook()
+            logger.info("✅ Old webhook deleted")
             
             # Set new webhook
-            success = application.bot.set_webhook(url=webhook_url)
+            success = application.bot.set_webhook(
+                url=webhook_url,
+                allowed_updates=["message", "callback_query"]
+            )
             
             if success:
                 logger.info(f"✅ Webhook set successfully to: {webhook_url}")
                 
-                # Get webhook info
+                # Verify webhook
                 webhook_info = application.bot.get_webhook_info()
                 logger.info(f"Webhook info: {webhook_info}")
+                
+                return True
             else:
                 logger.error("❌ Failed to set webhook")
-        else:
-            logger.warning("⚠️ RENDER_EXTERNAL_URL not set, using polling")
-            application.run_polling()
-            
-    except Exception as e:
-        logger.error(f"❌ Webhook setup failed: {e}")
-        logger.info("Falling back to polling mode")
-        application.run_polling()
-
-def main():
-    """Main function to run the bot"""
-    global application
-    
-    try:
-        # Create application
-        logger.info("🚀 Starting Movie Search Bot...")
-        
-        # Build application
-        builder = Application.builder().token(TOKEN)
-        
-        # Add timeouts
-        builder.connect_timeout(30)
-        builder.read_timeout(30)
-        builder.write_timeout(30)
-        
-        application = builder.build()
-        
-        # Add handlers
-        application.add_handler(CommandHandler("start", start))
-        application.add_handler(CommandHandler("help", help_command))
-        application.add_handler(CommandHandler("categories", categories_command))
-        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, search_movie))
-        
-        logger.info("✅ Handlers added successfully")
-        
-        # Check if running on Render
-        if os.environ.get("RENDER"):
-            logger.info("🌐 Running on Render, setting up webhook...")
-            setup_webhook(application)
-            
-            # Run Flask app
-            logger.info(f"🚀 Flask server starting on port {PORT}")
-            flask_app.run(host="0.0.0.0", port=PORT)
-        else:
-            # Local development - use polling
-            logger.info("💻 Running locally, using polling...")
-            application.run_polling()
-            
-    except Exception as e:
-        logger.error(f"❌ Bot crashed: {e}")
-        raise
+                return False
+        except Exception as e:
+            logger.error(f"❌ Webhook setup error: {e}")
+            return False
+    else:
+        logger.error("❌ RENDER_EXTERNAL_URL not set!")
+        return False
 
 if __name__ == "__main__":
-    main()
+    logger.info("🚀 Starting Movie Search Bot...")
+    
+    # Setup bot and webhook
+    if setup_webhook():
+        logger.info(f"✅ Bot ready! Listening on port {PORT}")
+        
+        # Run Flask app
+        flask_app.run(
+            host="0.0.0.0",
+            port=PORT,
+            debug=False
+        )
+    else:
+        logger.error("❌ Failed to setup webhook. Check your environment variables.")
