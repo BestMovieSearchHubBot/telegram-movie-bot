@@ -2,92 +2,46 @@
   {
     "name": "Pathaan",
     "category": "bollywood",
-    "link": "https://t.me/yourchannel/1",
-    "year": "2023",
-    "quality": "HD"
+    "link": "https://t.me/yourchannel/1"
   },
   {
     "name": "Jawan",
     "category": "bollywood",
-    "link": "https://t.me/yourchannel/2",
-    "year": "2023",
-    "quality": "HD"
+    "link": "https://t.me/yourchannel/2"
   },
   {
     "name": "Animal",
     "category": "bollywood",
-    "link": "https://t.me/yourchannel/3",
-    "year": "2023",
-    "quality": "HD"
-  },
-  {
-    "name": "Gadar 2",
-    "category": "bollywood",
-    "link": "https://t.me/yourchannel/10",
-    "year": "2023",
-    "quality": "HD"
+    "link": "https://t.me/yourchannel/3"
   },
   {
     "name": "KGF Chapter 1",
     "category": "south",
-    "link": "https://t.me/yourchannel/4",
-    "year": "2018",
-    "quality": "4K"
+    "link": "https://t.me/yourchannel/4"
   },
   {
     "name": "KGF Chapter 2",
     "category": "south",
-    "link": "https://t.me/yourchannel/5",
-    "year": "2022",
-    "quality": "4K"
+    "link": "https://t.me/yourchannel/5"
   },
   {
     "name": "Pushpa The Rise",
     "category": "south",
-    "link": "https://t.me/yourchannel/6",
-    "year": "2021",
-    "quality": "HD"
+    "link": "https://t.me/yourchannel/6"
   },
   {
     "name": "RRR",
     "category": "south",
-    "link": "https://t.me/yourchannel/7",
-    "year": "2022",
-    "quality": "4K"
-  },
-  {
-    "name": "Salaar",
-    "category": "south",
-    "link": "https://t.me/yourchannel/11",
-    "year": "2023",
-    "quality": "HD"
+    "link": "https://t.me/yourchannel/7"
   },
   {
     "name": "Avengers Endgame",
     "category": "hollywood",
-    "link": "https://t.me/yourchannel/8",
-    "year": "2019",
-    "quality": "4K"
+    "link": "https://t.me/yourchannel/8"
   },
   {
     "name": "Spider Man No Way Home",
     "category": "hollywood",
-    "link": "https://t.me/yourchannel/9",
-    "year": "2021",
-    "quality": "4K"
-  },
-  {
-    "name": "Oppenheimer",
-    "category": "hollywood",
-    "link": "https://t.me/yourchannel/12",
-    "year": "2023",
-    "quality": "HD"
-  },
-  {
-    "name": "John Wick 4",
-    "category": "hollywood",
-    "link": "https://t.me/yourchannel/13",
-    "year": "2023",
-    "quality": "4K"
+    "link": "https://t.me/yourchannel/9"
   }
 ]
