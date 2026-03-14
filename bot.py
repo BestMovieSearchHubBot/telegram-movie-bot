@@ -1,13 +1,14 @@
 import json
 from telegram import Update, ReplyKeyboardMarkup
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 
 TOKEN = "8786374300:AAGlF27oE0rwCwRPhwrDkt-mEt5C6f4H9eY"
 
 with open("movies.json") as f:
     movies = json.load(f)
 
-def start(update: Update, context: CallbackContext):
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     keyboard = [
         ["Bollywood", "Hollywood"],
@@ -16,13 +17,13 @@ def start(update: Update, context: CallbackContext):
 
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
-    update.message.reply_text(
+    await update.message.reply_text(
         "🎬 Welcome to Movie Search Bot\n\nType movie name to search.",
         reply_markup=reply_markup
     )
 
 
-def search_movie(update: Update, context: CallbackContext):
+async def search_movie(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     text = update.message.text.lower()
 
@@ -40,24 +41,23 @@ def search_movie(update: Update, context: CallbackContext):
 
     if result:
         for movie in result[:10]:
-            update.message.reply_text(
+            await update.message.reply_text(
                 f"🎬 {movie['name']}\n\nDownload Link:\n{movie['link']}"
             )
     else:
-        update.message.reply_text("❌ Movie not found")
+        await update.message.reply_text("❌ Movie not found")
 
 
 def main():
 
-    updater = Updater(TOKEN, use_context=True)
+    app = ApplicationBuilder().token(TOKEN).build()
 
-    dp = updater.dispatcher
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, search_movie))
 
-    dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(MessageHandler(Filters.text & ~Filters.command, search_movie))
+    print("Bot Running...")
 
-    updater.start_polling()
-    updater.idle()
+    app.run_polling()
 
 
 if __name__ == "__main__":
