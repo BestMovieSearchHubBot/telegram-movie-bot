@@ -1,0 +1,17 @@
+## 6. render.yaml (Render configuration)
+
+```yaml
+services:
+  - type: web
+    name: telegram-movie-bot
+    runtime: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn bot:flask_app
+    envVars:
+      - key: BOT_TOKEN
+        value: 8786374300:AAGlF27oE0rwCwRPhwrDkt-mEt5C6f4H9eY
+      - key: RENDER_EXTERNAL_URL
+        value: https://telegram-movie-bot-mw26.onrender.com
+    healthCheckPath: /health
