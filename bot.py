@@ -1,28 +1,27 @@
 import os
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
+from telegram import Update
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
 TOKEN = "8786374300:AAGlF27oE0rwCwRPhwrDkt-mEt5C6f4H9eY"
 PORT = int(os.environ.get("PORT", 10000))
 
-def start(update, context):
-    update.message.reply_text("✅ Bot is working!")
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("✅ Bot is working!")
 
-def echo(update, context):
-    update.message.reply_text(f"You said: {update.message.text}")
+async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(f"You said: {update.message.text}")
 
 def main():
-    updater = Updater(TOKEN, use_context=True)
-    dp = updater.dispatcher
-    dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(MessageHandler(Filters.text & ~Filters.command, echo))
+    app = Application.builder().token(TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
     
     if os.environ.get("RENDER"):
-        updater.start_webhook(listen="0.0.0.0", port=PORT, url_path=TOKEN)
-        updater.bot.set_webhook(f"https://{os.environ['RENDER_EXTERNAL_URL']}/{TOKEN}")
+        # Webhook mode for Render
+        app.run_webhook(listen="0.0.0.0", port=PORT, url_path=TOKEN)
     else:
-        updater.start_polling()
-    
-    updater.idle()
+        # Polling mode for local testing
+        app.run_polling()
 
 if __name__ == "__main__":
     main()
