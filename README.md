@@ -1,8 +1,10 @@
 Telegram Movie Search Bot
 
-Features:
-- Movie search
-- Bollywood / Hollywood / South categories
-- Telegram channel movie links
+Search movies and get download links from a Telegram channel.
+
+Categories:
+Bollywood
+Hollywood
+South Movies
 
 Deploy on Render using Python.
