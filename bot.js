@@ -13,7 +13,7 @@ app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
 // Bot token
 const bot = new Telegraf('8786374300:AAGlF27oE0rwCwRPhwrDkt-mEt5C6f4H9eY');
 
-// Movies data
+// Movies data – now with poster and quality fields
 let movies = [];
 
 async function loadMovies() {
@@ -21,6 +21,7 @@ async function loadMovies() {
         const data = await fs.readFile('movies.json', 'utf8');
         movies = JSON.parse(data);
         console.log(`✅ ${movies.length} movies loaded`);
+        // Optional: validate each movie has required fields
     } catch (error) {
         console.error('❌ Error loading movies:', error.message);
         movies = [];
@@ -28,87 +29,85 @@ async function loadMovies() {
 }
 loadMovies();
 
-// /start command – Professional welcome
+// /start command – Simple welcome without keyboard
 bot.start(async (ctx) => {
     const firstName = ctx.from.first_name || 'User';
-    
-    const welcomeMessage = `🎬 **Welcome ${firstName}!**\n\n` +
-        `🔍 **Movie Search Bot** – Find any movie instantly!\n\n` +
-        `📌 **How to use:**\n` +
-        `• Tap on category buttons below\n` +
-        `• Type movie name (e.g., Pathaan, KGF)\n` +
-        `• Get download link instantly\n\n` +
-        `👇 **Choose a category:**`;
-
-    const keyboard = Markup.keyboard([
-        ['🎬 Bollywood', '🎬 Hollywood'],
-        ['🎬 South Movies']
-    ]).resize();
-
-    await ctx.replyWithMarkdown(welcomeMessage, keyboard);
+    const welcomeMessage = `🎬 *Welcome ${firstName}!*\n\n` +
+        `🔍 Just type any movie name (e.g., *Pathaan*, *KGF*, *Inception*) and I'll send you the download link with poster and quality details.\n\n` +
+        `✨ *Fast • Easy • Professional*`;
+    await ctx.replyWithMarkdown(welcomeMessage);
 });
 
-// Handle text messages – Attractive output
+// Handle text messages – Search only
 bot.on('text', async (ctx) => {
     if (!movies.length) {
         return ctx.reply('❌ *Database not available. Try later!*', { parse_mode: 'Markdown' });
     }
 
-    const text = ctx.message.text.toLowerCase().replace('🎬', '').trim();
-    let results = [];
-    let category = '';
+    const query = ctx.message.text.trim().toLowerCase();
+    if (!query) return;
 
-    // Category search
-    if (text.includes('bollywood')) {
-        results = movies.filter(m => m.category === 'bollywood');
-        category = 'Bollywood';
-    } else if (text.includes('hollywood')) {
-        results = movies.filter(m => m.category === 'hollywood');
-        category = 'Hollywood';
-    } else if (text.includes('south')) {
-        results = movies.filter(m => m.category === 'south');
-        category = 'South';
-    } else {
-        results = movies.filter(m => m.name.toLowerCase().includes(text));
-    }
+    // Search movies by name (case-insensitive)
+    const results = movies.filter(m => m.name.toLowerCase().includes(query));
 
-    // If no results
     if (results.length === 0) {
         return ctx.replyWithMarkdown(
             `❌ *No movies found for* "${ctx.message.text}"\n\n` +
-            `💡 Try different spelling or use category buttons.`
+            `💡 Try a different spelling or check the movie name.`
         );
     }
 
-    // Category header
-    if (category) {
-        await ctx.replyWithMarkdown(
-            `🎬 *${category} Movies* (${results.length} found)\n═══════════════════`
-        );
-    } else {
-        await ctx.replyWithMarkdown(
-            `🔍 *${results.length} movies found* for "${ctx.message.text}"\n═══════════════════`
-        );
+    // Limit to first 5 results to avoid spam
+    const limited = results.slice(0, 5);
+    let sentCount = 0;
+
+    for (const movie of limited) {
+        // Prepare caption with movie details
+        const caption = 
+            `🎬 *${movie.name}*\n` +
+            `📂 *Category:* ${movie.category.charAt(0).toUpperCase() + movie.category.slice(1)}\n` +
+            `⚙️ *Quality:* ${movie.quality || 'N/A'}\n\n` +
+            `⬇️ Click the button below to download.`;
+
+        // If poster URL exists, send photo; otherwise send text
+        if (movie.poster) {
+            try {
+                await ctx.replyWithPhoto(movie.poster, {
+                    caption,
+                    parse_mode: 'Markdown',
+                    ...Markup.inlineKeyboard([
+                        [Markup.button.url('📥 Download Now', movie.link)]
+                    ])
+                });
+                sentCount++;
+            } catch (err) {
+                // Fallback if photo fails (invalid URL, etc.)
+                await ctx.replyWithMarkdown(caption, {
+                    ...Markup.inlineKeyboard([
+                        [Markup.button.url('📥 Download Now', movie.link)]
+                    ])
+                });
+                sentCount++;
+            }
+        } else {
+            // No poster – send text only
+            await ctx.replyWithMarkdown(caption, {
+                ...Markup.inlineKeyboard([
+                    [Markup.button.url('📥 Download Now', movie.link)]
+                ])
+            });
+            sentCount++;
+        }
+
+        // Small delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 300));
     }
 
-    // Send each movie as a card
-    for (const movie of results.slice(0, 5)) {
-        const message = `🎥 *${movie.name}*\n` +
-                       `📂 *Category:* ${movie.category.charAt(0).toUpperCase() + movie.category.slice(1)}\n\n` +
-                       `📥 **Download:**`;
-
-        await ctx.replyWithMarkdown(message, {
-            ...Markup.inlineKeyboard([
-                [Markup.button.url('⬇️ Get Link', movie.link)]
-            ])
-        });
-    }
-
-    // If more than 5 movies
+    // If there are more movies than shown
     if (results.length > 5) {
         await ctx.replyWithMarkdown(
-            `📌 *Showing 5 of ${results.length} movies.*\n` +
-            `✨ Type exact name for more specific results.`
+            `📌 *Showing ${sentCount} of ${results.length} movies.*\n` +
+            `✨ Type a more specific name to narrow down results.`
         );
     }
 });
