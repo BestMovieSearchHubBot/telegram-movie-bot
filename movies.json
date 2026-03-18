@@ -7,10 +7,10 @@
     "poster": "https://example.com/pathaan.jpg"
   },
   {
-    "name": "KGF Chapter 2",
+    "name": "Varisu",
     "category": "south",
     "link": "https://example.com/kgf2",
-    "quality": "4K",
-    "poster": "https://example.com/kgf2.jpg"
+    "quality": "1080P",
+    "poster": "https://raw.githubusercontent.com/BestMovieSearchHubBot/telegram-movie-bot/main/varisu.png"
   }
 ]
